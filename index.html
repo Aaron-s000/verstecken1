@@ -1,384 +1,148 @@
-ColorHide/
-├── index.html
-├── style.css
-├── main.js
-├── paint.js
-├── player.js
-└── utils.js
-<html lang="en">
+<!DOCTYPE html>
+<html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>ColorHide</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>ColorHide 2D</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: #111;
+        font-family: Arial;
+    }
+    canvas {
+        display: block;
+    }
+    #ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        font-size: 14px;
+    }
+</style>
 </head>
 <body>
-    <div id="info">WASD move | Mouse look | Click paint</div>
-    <script type="module" src="main.js"></script>
+
+<div id="ui">
+    WASD = bewegen | Maus = Farbe holen | Space = malen
+</div>
+
+<canvas id="game"></canvas>
+
+<script src="game.js"></script>
 </body>
 </html>
-body {
-    margin: 0;
-    overflow: hidden;
-    background: #111;
-    color: white;
-    font-family: Arial;
-}
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-#info {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 10;
-}
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js";
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-let scene = new THREE.Scene();
-scene.background = new THREE.Color(0x222222);
+/* ---------------- PLAYER ---------------- */
+const player = {
+    x: 120,
+    y: 120,
+    size: 30,
+    speed: 3,
+    color: { r: 255, g: 255, b: 255 },
+    targetColor: { r: 255, g: 255, b: 255 }
+};
 
-let camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-);
-
-let renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-// Floor
-let floorGeo = new THREE.PlaneGeometry(50, 50);
-let floorMat = new THREE.MeshBasicMaterial({ color: 0x555555 });
-let floor = new THREE.Mesh(floorGeo, floorMat);
-floor.rotation.x = -Math.PI / 2;
-scene.add(floor);
-
-// Player
-let player = new THREE.Object3D();
-scene.add(player);
-player.add(camera);
-
-camera.position.y = 1.6;
-
-// Cube (target)
-let cubeGeo = new THREE.BoxGeometry(1, 1, 1);
-let cubeMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-let cube = new THREE.Mesh(cubeGeo, cubeMat);
-cube.position.set(3, 0.5, -5);
-scene.add(cube);
-
-// Movement
-let keys = {};
-
-document.addEventListener("keydown", (e) => keys[e.key] = true);
-document.addEventListener("keyup", (e) => keys[e.key] = false);
-
-// Mouse look
-let rotX = 0;
-let rotY = 0;
-
-document.addEventListener("mousemove", (e) => {
-    if (document.pointerLockElement === document.body) {
-        rotY -= e.movementX * 0.002;
-        rotX -= e.movementY * 0.002;
-        rotX = Math.max(-1.5, Math.min(1.5, rotX));
-    }
-});
-
-document.body.addEventListener("click", () => {
-    document.body.requestPointerLock();
-});
-
-// Paint system
-document.addEventListener("mousedown", () => {
-    cube.material.color.set(Math.random() * 0xffffff);
-});
-
-// Game loop
-function animate() {
-    requestAnimationFrame(animate);
-
-    player.rotation.y = rotY;
-    camera.rotation.x = rotX;
-
-    let speed = 0.1;
-
-    if (keys["w"]) player.position.z -= Math.cos(rotY) * speed;
-    if (keys["s"]) player.position.z += Math.cos(rotY) * speed;
-    if (keys["a"]) player.position.x -= Math.cos(rotY + Math.PI / 2) * speed;
-    if (keys["d"]) player.position.x += Math.cos(rotY + Math.PI / 2) * speed;
-
-    renderer.render(scene, camera);
-}
-
-animate();
-export class PaintSystem {
-    constructor(playerMesh) {
-        this.playerMesh = playerMesh;
-        this.color = new THREE.Color(0xffffff);
-        this.targetColor = new THREE.Color(0xffffff);
-        this.lerpSpeed = 3.5;
-    }
-
-    setColor(color) {
-        this.targetColor.set(color);
-    }
-
-    update(delta) {
-        this.color.lerp(this.targetColor, delta * this.lerpSpeed);
-        this.playerMesh.material.color.copy(this.color);
-    }
-
-    getColor() {
-        return this.color.clone();
-    }
-}
-export class Player {
-    constructor(mesh, camera) {
-        this.mesh = mesh;
-        this.camera = camera;
-
-        this.speed = 5;
-        this.rotationX = 0;
-        this.rotationY = 0;
-
-        this.keys = {};
-    }
-
-    initControls() {
-        document.addEventListener("keydown", (e) => this.keys[e.key] = true);
-        document.addEventListener("keyup", (e) => this.keys[e.key] = false);
-
-        document.body.addEventListener("click", () => {
-            document.body.requestPointerLock();
-        });
-
-        document.addEventListener("mousemove", (e) => {
-            if (document.pointerLockElement === document.body) {
-                this.rotationY -= e.movementX * 0.002;
-                this.rotationX -= e.movementY * 0.002;
-                this.rotationX = Math.max(-1.2, Math.min(1.2, this.rotationX));
-            }
-        });
-    }
-
-    update() {
-        this.mesh.rotation.y = this.rotationY;
-        this.camera.rotation.x = this.rotationX;
-
-        if (this.keys["w"]) this.mesh.position.z -= Math.cos(this.rotationY) * 0.1;
-        if (this.keys["s"]) this.mesh.position.z += Math.cos(this.rotationY) * 0.1;
-        if (this.keys["a"]) this.mesh.position.x -= Math.cos(this.rotationY + Math.PI / 2) * 0.1;
-        if (this.keys["d"]) this.mesh.position.x += Math.cos(this.rotationY + Math.PI / 2) * 0.1;
-    }
-}
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js";
-import { Player } from "./player.js";
-import { PaintSystem } from "./paint.js";
-
-// Scene
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x202020);
-
-// Camera
-const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-
-// Renderer
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(innerWidth, innerHeight);
-document.body.appendChild(renderer.domElement);
-
-// Floor
-const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(50, 50),
-    new THREE.MeshBasicMaterial({ color: 0x444444 })
-);
-floor.rotation.x = -Math.PI / 2;
-scene.add(floor);
-
-// Player mesh
-const playerMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(1, 2, 1),
-    new THREE.MeshBasicMaterial({ color: 0xffffff })
-);
-scene.add(playerMesh);
-
-camera.position.y = 1.5;
-playerMesh.add(camera);
-
-// Systems
-const player = new Player(playerMesh, camera);
-player.initControls();
-
-const paint = new PaintSystem(playerMesh);
-
-// Umgebung Farbzonen
+/* ---------------- ENV ZONES ---------------- */
 const zones = [
-    { pos: new THREE.Vector3(5,0,0), color: 0xff0000 },
-    { pos: new THREE.Vector3(-5,0,0), color: 0x0000ff }
+    { x: 200, y: 200, color: { r: 255, g: 0, b: 0 } },
+    { x: 500, y: 200, color: { r: 0, g: 0, b: 255 } },
+    { x: 350, y: 450, color: { r: 0, g: 255, b: 0 } },
+    { x: 700, y: 350, color: { r: 255, g: 255, b: 0 } }
 ];
 
-// Paint Controls
-document.addEventListener("mousedown", () => {
-    paint.setColor(Math.random() > 0.5 ? 0xff0000 : 0x0000ff);
-});
+/* ---------------- INPUT ---------------- */
+const keys = {};
 
-// Detection System (simple stealth logic)
-function getStealthScore() {
-    let minDist = Infinity;
-    let closestColor = new THREE.Color(0xffffff);
+addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-    zones.forEach(z => {
-        const dist = playerMesh.position.distanceTo(z.pos);
-        if (dist < minDist) {
-            minDist = dist;
-            closestColor.setHex(z.color);
-        }
-    });
-
-    const playerColor = paint.getColor();
-
-    return 1 - playerColor.distanceTo(closestColor);
+/* ---------------- HELPERS ---------------- */
+function lerp(a, b, t) {
+    return a + (b - a) * t;
 }
 
-// Loop
-function animate() {
-    requestAnimationFrame(animate);
-
-    player.update();
-
-    paint.update(0.016);
-
-    const stealth = getStealthScore();
-
-    // Debug feel (optional)
-    renderer.render(scene, camera);
+function mixColor(c1, c2, t) {
+    return {
+        r: lerp(c1.r, c2.r, t),
+        g: lerp(c1.g, c2.g, t),
+        b: lerp(c1.b, c2.b, t)
+    };
 }
 
-animate();
-export class PaintSystem {
-    constructor(playerMesh, camera, scene) {
-        this.playerMesh = playerMesh;
-        this.camera = camera;
-        this.scene = scene;
+function getClosestZoneColor() {
+    let closest = zones[0];
+    let bestDist = Infinity;
 
-        this.currentColor = new THREE.Color(0xffffff);
-        this.brushColor = new THREE.Color(1, 1, 1);
+    for (const z of zones) {
+        const dx = player.x - z.x;
+        const dy = player.y - z.y;
+        const dist = dx * dx + dy * dy;
 
-        this.mixStrength = 0.25;
-
-        this.raycaster = new THREE.Raycaster();
-    }
-
-    sampleEnvironmentColor() {
-        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-
-        const hits = this.raycaster.intersectObjects(this.scene.children, true);
-
-        if (hits.length > 0) {
-            const obj = hits[0].object;
-
-            if (obj.material && obj.material.color) {
-                this.brushColor.copy(obj.material.color);
-            }
+        if (dist < bestDist) {
+            bestDist = dist;
+            closest = z;
         }
     }
 
-    paint() {
-        // Mischung statt Copy
-        this.currentColor.lerp(this.brushColor, this.mixStrength);
-    }
-
-    update(delta) {
-        this.playerMesh.material.color.copy(this.currentColor);
-    }
-
-    getColor() {
-        return this.currentColor.clone();
-    }
+    return closest.color;
 }
-document.addEventListener("mousedown", (e) => {
-    if (e.button === 0) {
-        paint.sampleEnvironmentColor();
-    }
 
-    if (e.button === 2) {
-        paint.paint();
+/* ---------------- ACTIONS ---------------- */
+addEventListener("mousedown", () => {
+    // Farbe aus Umgebung holen
+    player.targetColor = getClosestZoneColor();
+});
+
+addEventListener("keydown", e => {
+    if (e.code === "Space") {
+        // malen = Mischung verstärken
+        player.color = mixColor(player.color, player.targetColor, 0.35);
     }
 });
-document.addEventListener("contextmenu", (e) => e.preventDefault());
-const seeker = new THREE.Mesh(
-    new THREE.BoxGeometry(1, 2, 1),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 })
-);
 
-seeker.position.set(0, 1, 8);
-scene.add(seeker);
-function canSeePlayer() {
-    const dirToPlayer = new THREE.Vector3()
-        .subVectors(playerMesh.position, seeker.position);
+/* ---------------- UPDATE ---------------- */
+function update() {
+    if (keys["w"]) player.y -= player.speed;
+    if (keys["s"]) player.y += player.speed;
+    if (keys["a"]) player.x -= player.speed;
+    if (keys["d"]) player.x += player.speed;
 
-    const distance = dirToPlayer.length();
-
-    if (distance > 12) return false;
-
-    dirToPlayer.normalize();
-
-    const forward = new THREE.Vector3(0, 0, -1);
-    forward.applyQuaternion(seeker.quaternion);
-
-    const angle = forward.dot(dirToPlayer);
-
-    // Sichtkegel (~60°)
-    return angle > 0.5;
+    // sanfte Farbangleichung
+    player.color = mixColor(player.color, player.targetColor, 0.02);
 }
-function colorMismatchScore() {
-    const playerColor = paint.getColor();
 
-    // simple environment reference (center zone)
-    const envColor = new THREE.Color(0x444444);
+/* ---------------- DRAW ---------------- */
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    return playerColor.distanceTo(envColor);
-}
-function updateSeeker() {
-    if (canSeePlayer()) {
-        const dir = new THREE.Vector3()
-            .subVectors(playerMesh.position, seeker.position)
-            .normalize();
-
-        seeker.position.add(dir.multiplyScalar(0.05));
-    } else {
-        // patrol
-        seeker.position.x += Math.sin(Date.now() * 0.001) * 0.02;
-    }
-}
-let detection = 0;
-
-function updateDetection() {
-    if (canSeePlayer()) {
-        detection += 0.02;
-
-        detection += colorMismatchScore() * 0.01;
-    } else {
-        detection -= 0.01;
+    // Zonen
+    for (const z of zones) {
+        ctx.fillStyle = `rgb(${z.color.r},${z.color.g},${z.color.b})`;
+        ctx.fillRect(z.x, z.y, 80, 80);
     }
 
-    detection = Math.max(0, Math.min(1, detection));
-
-    if (detection >= 1) {
-        console.log("YOU GOT CAUGHT");
-        detection = 0;
-        playerMesh.position.set(0, 1, 0);
-    }
+    // Player
+    ctx.fillStyle = `rgb(${player.color.r},${player.color.g},${player.color.b})`;
+    ctx.fillRect(player.x, player.y, player.size, player.size);
 }
-function animate() {
-    requestAnimationFrame(animate);
 
-    player.update();
-    paint.update(0.016);
-
-    updateSeeker();
-    updateDetection();
-
-    renderer.render(scene, camera);
+/* ---------------- LOOP ---------------- */
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
 }
+loop();
+
+/* ---------------- RESIZE ---------------- */
+addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
