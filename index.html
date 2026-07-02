@@ -1,148 +1,17 @@
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>ColorHide 2D</title>
-<style>
-    body {
-        margin: 0;
-        overflow: hidden;
-        background: #111;
-        font-family: Arial;
-    }
-    canvas {
-        display: block;
-    }
-    #ui {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        color: white;
-        font-size: 14px;
-    }
-</style>
+    <meta charset="UTF-8">
+    <title>ColorHide 2D</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div id="ui">
-    WASD = bewegen | Maus = Farbe holen | Space = malen
-</div>
+<div id="ui">WASD move | Click: copy color | Space: paint</div>
 
 <canvas id="game"></canvas>
 
 <script src="game.js"></script>
+
 </body>
 </html>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-/* ---------------- PLAYER ---------------- */
-const player = {
-    x: 120,
-    y: 120,
-    size: 30,
-    speed: 3,
-    color: { r: 255, g: 255, b: 255 },
-    targetColor: { r: 255, g: 255, b: 255 }
-};
-
-/* ---------------- ENV ZONES ---------------- */
-const zones = [
-    { x: 200, y: 200, color: { r: 255, g: 0, b: 0 } },
-    { x: 500, y: 200, color: { r: 0, g: 0, b: 255 } },
-    { x: 350, y: 450, color: { r: 0, g: 255, b: 0 } },
-    { x: 700, y: 350, color: { r: 255, g: 255, b: 0 } }
-];
-
-/* ---------------- INPUT ---------------- */
-const keys = {};
-
-addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
-
-/* ---------------- HELPERS ---------------- */
-function lerp(a, b, t) {
-    return a + (b - a) * t;
-}
-
-function mixColor(c1, c2, t) {
-    return {
-        r: lerp(c1.r, c2.r, t),
-        g: lerp(c1.g, c2.g, t),
-        b: lerp(c1.b, c2.b, t)
-    };
-}
-
-function getClosestZoneColor() {
-    let closest = zones[0];
-    let bestDist = Infinity;
-
-    for (const z of zones) {
-        const dx = player.x - z.x;
-        const dy = player.y - z.y;
-        const dist = dx * dx + dy * dy;
-
-        if (dist < bestDist) {
-            bestDist = dist;
-            closest = z;
-        }
-    }
-
-    return closest.color;
-}
-
-/* ---------------- ACTIONS ---------------- */
-addEventListener("mousedown", () => {
-    // Farbe aus Umgebung holen
-    player.targetColor = getClosestZoneColor();
-});
-
-addEventListener("keydown", e => {
-    if (e.code === "Space") {
-        // malen = Mischung verstärken
-        player.color = mixColor(player.color, player.targetColor, 0.35);
-    }
-});
-
-/* ---------------- UPDATE ---------------- */
-function update() {
-    if (keys["w"]) player.y -= player.speed;
-    if (keys["s"]) player.y += player.speed;
-    if (keys["a"]) player.x -= player.speed;
-    if (keys["d"]) player.x += player.speed;
-
-    // sanfte Farbangleichung
-    player.color = mixColor(player.color, player.targetColor, 0.02);
-}
-
-/* ---------------- DRAW ---------------- */
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Zonen
-    for (const z of zones) {
-        ctx.fillStyle = `rgb(${z.color.r},${z.color.g},${z.color.b})`;
-        ctx.fillRect(z.x, z.y, 80, 80);
-    }
-
-    // Player
-    ctx.fillStyle = `rgb(${player.color.r},${player.color.g},${player.color.b})`;
-    ctx.fillRect(player.x, player.y, player.size, player.size);
-}
-
-/* ---------------- LOOP ---------------- */
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
-loop();
-
-/* ---------------- RESIZE ---------------- */
-addEventListener("resize", () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-});
